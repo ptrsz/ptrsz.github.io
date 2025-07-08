@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Download PowerShell Script and Launcher</title>
+</head>
+<body>
+  <h1>Download PowerShell Script and .BAT Launcher</h1>
+  <p>This will generate two files:</p>
+  <ul>
+    <li><code>fetchResponse.ps1</code> – The PowerShell script, which GETs a benign site and outputs the whole http response in a <code>response.txt</code> file, adjacent to the script. </li>
+    <li><code>run_fetch.bat</code> – A batch file to run the ps1 script. It'll likely not be executable after downloading with Edge. If so, run it manually with cmd.exe .</br>
+      The file content is <code>powershell -ExecutionPolicy Bypass -NoLogo -NoProfile -File "%~dp0fetchResponse.ps1"</code>
+    </li>
+    
+  </ul>
+  <div id="download-area"></div>
+
+  <script>
+    // PowerShell script content
+    const psScript = `
+$uri = "https://ptrsz.github.io"
+
+try {
+    $response = Invoke-WebRequest -Uri $uri -UseBasicParsing
+
+    $output = @()
+    $output += "=== Status ==="
+    $output += "HTTP/1.1 $($response.StatusCode) $($response.StatusDescription)"
+
+    $output += "\`r\`n=== Headers ==="
+    $response.Headers.GetEnumerator() | ForEach-Object {
+      $output += "$($_.Key): $($_.Value)"
+    }
+
+    $output += "\`r\`n=== Final URI ==="
+    $output += $response.BaseResponse.ResponseUri.AbsoluteUri
+
+    $output += "\`r\`n=== Body ==="
+    $output += $response.Content
+
+    Set-Content -Path "response.txt" -Value $output -Encoding UTF8
+
+    Write-Host "Saved response to response.txt"
+}
+catch {
+    Write-Error "Request failed: \$_"
+}
+`.trim();
+
+    // .bat file that runs the above script
+    const batScript = `
+@echo off
+powershell -ExecutionPolicy Bypass -NoLogo -NoProfile -File "%~dp0fetchResponse.ps1"
+pause
+`.trim();
+
+    // Create blobs
+    const psBlob = new Blob([psScript], { type: 'text/plain' });
+    const batBlob = new Blob([batScript], { type: 'text/plain' });
+
+    // Create download link function
+    function createDownloadLink(blob, filename, label) {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      link.textContent = label;
+      link.style.display = 'block';
+      link.style.margin = '8px 0';
+      return link;
+    }
+
+    // Add both links to the page
+    const area = document.getElementById('download-area');
+    area.appendChild(createDownloadLink(psBlob, 'fetchResponse.ps1', 'Download fetchResponse.ps1'));
+    area.appendChild(createDownloadLink(batBlob, 'run_fetch.bat', 'Download run_fetch.bat'));
+  </script>
+</body>
+</html>
